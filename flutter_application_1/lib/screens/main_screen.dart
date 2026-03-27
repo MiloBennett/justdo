@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'home_screen.dart';
-import 'schedule_screen.dart';
-import 'calendar_screen.dart';
+import 'bill_screen.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
 import '../models/schedule_settings.dart';
 import '../models/course.dart';
 import '../models/event.dart';
+import '../models/bill.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -23,6 +23,7 @@ class _MainScreenState extends State<MainScreen> {
   // 共享数据
   final List<Course> _courses = [];
   final List<Event> _events = [];
+  final List<Bill> _bills = [];
 
   void _openSettings() async {
     final result = await Navigator.push<ScheduleSettings>(
@@ -80,6 +81,24 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
+  void _addBill(Bill bill) {
+    setState(() {
+      _bills.add(bill);
+    });
+  }
+
+  void _removeBill(Bill bill) {
+    setState(() {
+      _bills.remove(bill);
+    });
+  }
+
+  void _toggleBillComplete(Bill bill) {
+    setState(() {
+      bill.isCompleted = !bill.isCompleted;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return CupertinoTabScaffold(
@@ -97,14 +116,9 @@ class _MainScreenState extends State<MainScreen> {
             label: '待办',
           ),
           BottomNavigationBarItem(
-            icon: Icon(CupertinoIcons.calendar),
-            activeIcon: Icon(CupertinoIcons.calendar_today),
-            label: '课表',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(CupertinoIcons.clock),
-            activeIcon: Icon(CupertinoIcons.clock_solid),
-            label: '日历',
+            icon: Icon(CupertinoIcons.money_dollar_circle),
+            activeIcon: Icon(CupertinoIcons.money_dollar_circle_fill),
+            label: '账单',
           ),
           BottomNavigationBarItem(
             icon: Icon(CupertinoIcons.person),
@@ -132,24 +146,14 @@ class _MainScreenState extends State<MainScreen> {
             );
           case 1:
             return CupertinoTabView(
-              builder: (context) => ScheduleScreen(
-                settings: _settings,
-                onSettingsPressed: _openSettings,
-                courses: _courses,
-                onAddCourse: _addCourse,
-                onRemoveCourse: _removeCourse,
+              builder: (context) => BillScreen(
+                bills: _bills,
+                onAddBill: _addBill,
+                onRemoveBill: _removeBill,
+                onToggleComplete: _toggleBillComplete,
               ),
             );
           case 2:
-            return CupertinoTabView(
-              builder: (context) => CalendarScreen(
-                events: _events,
-                onAddEvent: _addEvent,
-                onRemoveEvent: _removeEvent,
-                onToggleComplete: _toggleEventComplete,
-              ),
-            );
-          case 3:
             return CupertinoTabView(
               builder: (context) => const ProfileScreen(),
             );
