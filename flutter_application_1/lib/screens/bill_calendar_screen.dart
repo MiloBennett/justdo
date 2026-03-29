@@ -77,13 +77,6 @@ class _BillCalendarScreenState extends State<BillCalendarScreen> {
     });
   }
 
-  void _goToToday() {
-    setState(() {
-      _focusedMonth = DateTime.now();
-      _selectedDate = DateTime.now();
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
@@ -91,8 +84,8 @@ class _BillCalendarScreenState extends State<BillCalendarScreen> {
         middle: const Text('日历'),
         trailing: CupertinoButton(
           padding: EdgeInsets.zero,
-          child: const Icon(CupertinoIcons.add, size: 26),
           onPressed: _addBill,
+          child: const Icon(CupertinoIcons.add, size: 26),
         ),
       ),
       child: SafeArea(
@@ -121,7 +114,9 @@ class _BillCalendarScreenState extends State<BillCalendarScreen> {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: CupertinoColors.systemBlue.withOpacity(0.1),
+                        color: CupertinoColors.systemBlue.withValues(
+                          alpha: 0.1,
+                        ),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
@@ -213,16 +208,12 @@ class _BillCalendarScreenState extends State<BillCalendarScreen> {
       final isWeekend = date.weekday == 6 || date.weekday == 7;
 
       double totalAmount = 0;
-      bool hasDeposit = false;
-      bool hasWithdraw = false;
       if (bills.isNotEmpty) {
         for (var bill in bills) {
           if (bill.type == BillType.deposit) {
             totalAmount += bill.amount;
-            hasDeposit = true;
           } else {
             totalAmount -= bill.amount;
-            hasWithdraw = true;
           }
         }
       }
@@ -237,7 +228,7 @@ class _BillCalendarScreenState extends State<BillCalendarScreen> {
                 color: isSelected
                     ? CupertinoColors.systemBlue
                     : isToday
-                    ? CupertinoColors.systemBlue.withOpacity(0.1)
+                    ? CupertinoColors.systemBlue.withValues(alpha: 0.1)
                     : null,
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -404,7 +395,7 @@ class _BillCalendarScreenState extends State<BillCalendarScreen> {
                     (isWithdraw
                             ? CupertinoColors.systemOrange
                             : CupertinoColors.systemGreen)
-                        .withOpacity(0.15),
+                        .withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(

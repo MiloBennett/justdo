@@ -21,19 +21,6 @@ class _AddBillScreenState extends State<AddBillScreen> {
   BillType _selectedType = BillType.deposit;
   Color _selectedColor = Colors.green;
 
-  final List<Map<String, dynamic>> _categories = [
-    {'name': '工资', 'icon': CupertinoIcons.money_dollar},
-    {'name': '奖金', 'icon': CupertinoIcons.gift},
-    {'name': '投资收益', 'icon': CupertinoIcons.chart_bar},
-    {'name': '兼职', 'icon': CupertinoIcons.briefcase},
-    {'name': '生活费', 'icon': CupertinoIcons.cart},
-    {'name': '购物', 'icon': CupertinoIcons.bag},
-    {'name': '餐饮', 'icon': CupertinoIcons.flame},
-    {'name': '交通', 'icon': CupertinoIcons.car},
-    {'name': '娱乐', 'icon': CupertinoIcons.music_note},
-    {'name': '其他', 'icon': CupertinoIcons.ellipsis},
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -93,8 +80,8 @@ class _AddBillScreenState extends State<AddBillScreen> {
         ),
         trailing: CupertinoButton(
           padding: EdgeInsets.zero,
-          child: const Text('保存'),
           onPressed: _save,
+          child: const Text('保存'),
         ),
       ),
       child: SafeArea(

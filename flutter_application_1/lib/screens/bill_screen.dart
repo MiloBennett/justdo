@@ -1,20 +1,29 @@
 import 'package:flutter/cupertino.dart';
+import 'package:intl/intl.dart';
 import '../models/bill.dart';
+import '../models/budget.dart';
 import 'add_bill_screen.dart';
 import 'bill_calendar_screen.dart';
+import 'budget_settings_screen.dart';
 
 class BillScreen extends StatefulWidget {
   final List<Bill> bills;
+  final List<Budget> budgets;
   final Function(Bill) onAddBill;
   final Function(Bill) onRemoveBill;
   final Function(Bill) onToggleComplete;
+  final Function(Budget) onAddBudget;
+  final Function(Budget) onRemoveBudget;
 
   const BillScreen({
     super.key,
     required this.bills,
+    required this.budgets,
     required this.onAddBill,
     required this.onRemoveBill,
     required this.onToggleComplete,
+    required this.onAddBudget,
+    required this.onRemoveBudget,
   });
 
   @override
@@ -63,9 +72,22 @@ class _BillScreenState extends State<BillScreen> {
         .fold(0.0, (sum, b) => sum + b.amount);
   }
 
+  List<MapEntry<DateTime, List<Bill>>> _groupByDate(List<Bill> bills) {
+    final Map<DateTime, List<Bill>> grouped = {};
+    for (var bill in bills) {
+      final date = DateTime(bill.date.year, bill.date.month, bill.date.day);
+      grouped.putIfAbsent(date, () => []);
+      grouped[date]!.add(bill);
+    }
+    final entries = grouped.entries.toList()
+      ..sort((a, b) => b.key.compareTo(a.key));
+    return entries;
+  }
+
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
+      backgroundColor: CupertinoColors.systemGroupedBackground,
       navigationBar: CupertinoNavigationBar(
         middle: const Text('储蓄计划'),
         trailing: Row(
@@ -73,7 +95,23 @@ class _BillScreenState extends State<BillScreen> {
           children: [
             CupertinoButton(
               padding: EdgeInsets.zero,
-              child: const Icon(CupertinoIcons.calendar, size: 24),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  CupertinoPageRoute(
+                    builder: (context) => BudgetSettingsScreen(
+                      budgets: widget.budgets,
+                      bills: widget.bills,
+                      onAddBudget: widget.onAddBudget,
+                      onRemoveBudget: widget.onRemoveBudget,
+                    ),
+                  ),
+                );
+              },
+              child: const Icon(CupertinoIcons.chart_pie, size: 22),
+            ),
+            CupertinoButton(
+              padding: EdgeInsets.zero,
               onPressed: () {
                 Navigator.push(
                   context,
@@ -87,72 +125,156 @@ class _BillScreenState extends State<BillScreen> {
                   ),
                 );
               },
+              child: const Icon(CupertinoIcons.calendar, size: 24),
             ),
             CupertinoButton(
               padding: EdgeInsets.zero,
-              child: const Icon(CupertinoIcons.add, size: 26),
               onPressed: _addBill,
+              child: const Icon(CupertinoIcons.add, size: 26),
             ),
           ],
         ),
       ),
       child: SafeArea(
-        child: Container(
-          color: CupertinoColors.systemGroupedBackground,
-          child: Column(
-            children: [
-              _buildSummary(),
-              Expanded(child: _buildBillList()),
-            ],
-          ),
-        ),
+        child: widget.bills.isEmpty
+            ? _buildEmptyState()
+            : CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(child: _buildSummaryCard()),
+                  _buildGroupedBillList(),
+                ],
+              ),
       ),
     );
   }
 
-  Widget _buildSummary() {
+  Widget _buildSummaryCard() {
     final deposit = _getTotalAmount(BillType.deposit);
     final withdraw = _getTotalAmount(BillType.withdraw);
     final balance = deposit - withdraw;
 
     return Container(
+      margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(20),
-      color: CupertinoColors.systemBackground,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF007AFF), Color(0xFF5856D6)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF007AFF).withValues(alpha: 0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSummaryItem('存款', deposit, CupertinoColors.systemGreen),
-          _buildSummaryItem('取款', withdraw, CupertinoColors.systemOrange),
-          _buildSummaryItem(
-            '余额',
-            balance,
-            balance >= 0
-                ? CupertinoColors.systemGreen
-                : CupertinoColors.systemOrange,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                '总余额',
+                style: TextStyle(
+                  fontSize: 15,
+                  color: CupertinoColors.white,
+                  fontWeight: FontWeight.w500,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: CupertinoColors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  DateFormat('yyyy年MM月').format(DateTime.now()),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: CupertinoColors.white,
+                    decoration: TextDecoration.none,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '¥${balance.toStringAsFixed(2)}',
+            style: const TextStyle(
+              fontSize: 36,
+              fontWeight: FontWeight.w700,
+              color: CupertinoColors.white,
+              letterSpacing: -1,
+              decoration: TextDecoration.none,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: _buildSummaryItem(
+                  '收入',
+                  deposit,
+                  CupertinoIcons.arrow_down_circle_fill,
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 40,
+                color: CupertinoColors.white.withValues(alpha: 0.3),
+              ),
+              Expanded(
+                child: _buildSummaryItem(
+                  '支出',
+                  withdraw,
+                  CupertinoIcons.arrow_up_circle_fill,
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSummaryItem(String label, double amount, Color color) {
+  Widget _buildSummaryItem(String label, double amount, IconData icon) {
     return Column(
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 13,
-            color: CupertinoColors.secondaryLabel,
-            decoration: TextDecoration.none,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: CupertinoColors.white.withValues(alpha: 0.8),
+              size: 16,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                color: CupertinoColors.white.withValues(alpha: 0.8),
+                decoration: TextDecoration.none,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 4),
         Text(
           '¥${amount.toStringAsFixed(2)}',
-          style: TextStyle(
-            fontSize: 20,
+          style: const TextStyle(
+            fontSize: 18,
             fontWeight: FontWeight.w600,
-            color: color,
+            color: CupertinoColors.white,
             decoration: TextDecoration.none,
           ),
         ),
@@ -160,80 +282,158 @@ class _BillScreenState extends State<BillScreen> {
     );
   }
 
-  Widget _buildBillList() {
-    if (widget.bills.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              CupertinoIcons.money_dollar,
-              size: 48,
-              color: CupertinoColors.tertiaryLabel,
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: CupertinoColors.systemGrey5,
+              borderRadius: BorderRadius.circular(20),
             ),
-            SizedBox(height: 12),
-            Text(
-              '暂无储蓄记录',
-              style: TextStyle(
-                fontSize: 15,
-                color: CupertinoColors.tertiaryLabel,
-                decoration: TextDecoration.none,
+            child: const Icon(
+              CupertinoIcons.money_dollar_circle,
+              size: 40,
+              color: CupertinoColors.systemGrey,
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            '暂无储蓄记录',
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              color: CupertinoColors.label,
+              decoration: TextDecoration.none,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            '点击右上角 + 号添加新记录',
+            style: TextStyle(
+              fontSize: 14,
+              color: CupertinoColors.secondaryLabel,
+              decoration: TextDecoration.none,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGroupedBillList() {
+    final sortedBills = List<Bill>.from(widget.bills)
+      ..sort((a, b) => b.date.compareTo(a.date));
+    final groupedEntries = _groupByDate(sortedBills);
+
+    final List<Widget> children = [];
+
+    for (var entry in groupedEntries) {
+      final date = entry.key;
+      final bills = entry.value;
+      final dayDeposit = bills
+          .where((b) => b.type == BillType.deposit)
+          .fold(0.0, (sum, b) => sum + b.amount);
+      final dayWithdraw = bills
+          .where((b) => b.type == BillType.withdraw)
+          .fold(0.0, (sum, b) => sum + b.amount);
+      final dayBalance = dayDeposit - dayWithdraw;
+
+      children.add(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _formatDateHeader(date),
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: CupertinoColors.secondaryLabel,
+                  decoration: TextDecoration.none,
+                ),
               ),
+              Text(
+                dayBalance >= 0
+                    ? '+¥${dayBalance.toStringAsFixed(2)}'
+                    : '-¥${(-dayBalance).toStringAsFixed(2)}',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: dayBalance >= 0
+                      ? CupertinoColors.systemGreen
+                      : CupertinoColors.systemRed,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      children.add(
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: CupertinoColors.systemBackground,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Column(
+              children: bills.asMap().entries.map((entry) {
+                final index = entry.key;
+                final bill = entry.value;
+                return _buildBillItem(bill, index == bills.length - 1);
+              }).toList(),
             ),
-          ],
+          ),
         ),
       );
     }
 
-    final sortedBills = List<Bill>.from(widget.bills)
-      ..sort((a, b) => b.date.compareTo(a.date));
+    children.add(const SizedBox(height: 20));
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: sortedBills.length,
-      itemBuilder: (context, index) {
-        final bill = sortedBills[index];
-        return _buildBillItem(bill);
-      },
-    );
+    return SliverList(delegate: SliverChildListDelegate(children));
   }
 
-  Widget _buildBillItem(Bill bill) {
+  Widget _buildBillItem(Bill bill, bool isLast) {
     final isWithdraw = bill.type == BillType.withdraw;
+    final iconData = isWithdraw
+        ? CupertinoIcons.arrow_up_circle_fill
+        : CupertinoIcons.arrow_down_circle_fill;
+    final color = isWithdraw
+        ? CupertinoColors.systemRed
+        : CupertinoColors.systemGreen;
 
     return GestureDetector(
       onLongPress: () => _deleteBill(bill),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 1),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: const BoxDecoration(
-          color: CupertinoColors.systemBackground,
-          border: Border(
-            bottom: BorderSide(color: CupertinoColors.separator, width: 0.5),
-          ),
+        decoration: BoxDecoration(
+          border: isLast
+              ? null
+              : const Border(
+                  bottom: BorderSide(
+                    color: CupertinoColors.separator,
+                    width: 0.5,
+                  ),
+                ),
         ),
         child: Row(
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
-                color:
-                    (isWithdraw
-                            ? CupertinoColors.systemOrange
-                            : CupertinoColors.systemGreen)
-                        .withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8),
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                isWithdraw
-                    ? CupertinoIcons.minus_circle_fill
-                    : CupertinoIcons.plus_circle_fill,
-                color: isWithdraw
-                    ? CupertinoColors.systemOrange
-                    : CupertinoColors.systemGreen,
-                size: 22,
-              ),
+              child: Icon(iconData, color: color, size: 24),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -244,25 +444,55 @@ class _BillScreenState extends State<BillScreen> {
                     bill.title,
                     style: const TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
+                      color: CupertinoColors.label,
                       decoration: TextDecoration.none,
                     ),
                   ),
-                  if (bill.category.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        bill.category,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: CupertinoColors.secondaryLabel,
-                          decoration: TextDecoration.none,
+                  if (bill.category.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: CupertinoColors.systemGrey5,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            bill.category,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: CupertinoColors.secondaryLabel,
+                              decoration: TextDecoration.none,
+                            ),
+                          ),
                         ),
-                      ),
+                        if (bill.note.isNotEmpty) ...[
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              bill.note,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: CupertinoColors.tertiaryLabel,
+                                decoration: TextDecoration.none,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
+                  ],
                 ],
               ),
             ),
+            const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -270,15 +500,14 @@ class _BillScreenState extends State<BillScreen> {
                   bill.amountString,
                   style: TextStyle(
                     fontSize: 17,
-                    fontWeight: FontWeight.w500,
-                    color: isWithdraw
-                        ? CupertinoColors.systemOrange
-                        : CupertinoColors.systemGreen,
+                    fontWeight: FontWeight.w600,
+                    color: color,
                     decoration: TextDecoration.none,
                   ),
                 ),
+                const SizedBox(height: 2),
                 Text(
-                  '${bill.date.month}/${bill.date.day}',
+                  DateFormat('HH:mm').format(bill.date),
                   style: const TextStyle(
                     fontSize: 12,
                     color: CupertinoColors.tertiaryLabel,
@@ -291,5 +520,22 @@ class _BillScreenState extends State<BillScreen> {
         ),
       ),
     );
+  }
+
+  String _formatDateHeader(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final dateOnly = DateTime(date.year, date.month, date.day);
+
+    if (dateOnly == today) {
+      return '今天';
+    } else if (dateOnly == yesterday) {
+      return '昨天';
+    } else if (date.year == now.year) {
+      return DateFormat('MM月dd日').format(date);
+    } else {
+      return DateFormat('yyyy年MM月dd日').format(date);
+    }
   }
 }

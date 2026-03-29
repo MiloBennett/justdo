@@ -8,6 +8,7 @@ import '../models/schedule_settings.dart';
 import '../models/course.dart';
 import '../models/event.dart';
 import '../models/bill.dart';
+import '../models/budget.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -24,6 +25,40 @@ class _MainScreenState extends State<MainScreen> {
   final List<Course> _courses = [];
   final List<Event> _events = [];
   final List<Bill> _bills = [];
+  final List<Budget> _budgets = [
+    Budget(
+      id: '1',
+      category: '餐饮',
+      amount: 2000,
+      type: BudgetType.monthly,
+      startDate: DateTime.now(),
+      color: const Color(0xFFFF9500),
+    ),
+    Budget(
+      id: '2',
+      category: '交通',
+      amount: 500,
+      type: BudgetType.monthly,
+      startDate: DateTime.now(),
+      color: const Color(0xFF007AFF),
+    ),
+    Budget(
+      id: '3',
+      category: '购物',
+      amount: 1500,
+      type: BudgetType.monthly,
+      startDate: DateTime.now(),
+      color: const Color(0xFFFF2D55),
+    ),
+    Budget(
+      id: '4',
+      category: '娱乐',
+      amount: 800,
+      type: BudgetType.monthly,
+      startDate: DateTime.now(),
+      color: const Color(0xFF5856D6),
+    ),
+  ];
 
   void _openSettings() async {
     final result = await Navigator.push<ScheduleSettings>(
@@ -99,6 +134,18 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
+  void _addBudget(Budget budget) {
+    setState(() {
+      _budgets.add(budget);
+    });
+  }
+
+  void _removeBudget(Budget budget) {
+    setState(() {
+      _budgets.remove(budget);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return CupertinoTabScaffold(
@@ -148,9 +195,12 @@ class _MainScreenState extends State<MainScreen> {
             return CupertinoTabView(
               builder: (context) => BillScreen(
                 bills: _bills,
+                budgets: _budgets,
                 onAddBill: _addBill,
                 onRemoveBill: _removeBill,
                 onToggleComplete: _toggleBillComplete,
+                onAddBudget: _addBudget,
+                onRemoveBudget: _removeBudget,
               ),
             );
           case 2:

@@ -1,17 +1,149 @@
-# flutter_application_1
+# 大学生助手 - Flutter 移动应用
 
-A new Flutter project.
+一个专为大学生设计的全能型移动应用，帮助管理学习、生活和财务。
 
-## Getting Started
+## ✨ 功能特性
 
-This project is a starting point for a Flutter application.
+### 📚 学习管理
+- **课程表管理** - 添加、编辑和查看课程安排，支持周次切换和颜色标记
+- **待办事项** - 创建和管理学习任务，支持思维导图视图
+- **日历计划** - 安排具体时间的计划，支持月视图和日视图
+- **专注计时器** - 帮助集中注意力学习
 
-A few resources to get you started if this is your first Flutter project:
+### 💰 财务管理
+- **账单记录** - 记录收入和支出，支持分类管理
+- **预算设置** - 设置月度预算，监控消费情况
+- **账单日历** - 通过日历视图查看财务记录
+- **财务统计** - 图表展示消费趋势
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+### 👤 个人中心
+- **学习统计** - 查看已完成课程、待办和专注时长
+- **个性化设置** - 通知、外观、隐私等设置
+- **数据同步** - 支持 iCloud 同步（开发中）
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## 🛠️ 技术栈
+
+- **框架**: Flutter 3.x
+- **语言**: Dart 3.x
+- **UI 组件**: 
+  - Material Design 3
+  - Cupertino (iOS 风格) 组件
+- **本地化**: 支持中文 (zh-CN) 和英文 (en-US)
+- **数据持久化**: 内存存储（可扩展为 SQLite 或其他数据库）
+
+## 📁 项目结构
+
+```
+lib/
+├── main.dart                 # 应用入口
+├── models/                   # 数据模型
+│   ├── bill.dart            # 账单模型
+│   ├── budget.dart          # 预算模型
+│   ├── course.dart          # 课程模型
+│   ├── event.dart           # 事件/计划模型
+│   ├── schedule_settings.dart # 课表设置模型
+│   ├── time_table.dart      # 时间表模型
+│   └── todo.dart            # 待办事项模型
+├── screens/                  # 页面
+│   ├── main_screen.dart     # 主页面（底部导航）
+│   ├── home_screen.dart     # 首页/待办页
+│   ├── bill_screen.dart     # 账单页
+│   ├── profile_screen.dart  # 个人中心页
+│   ├── schedule_screen.dart # 课表页
+│   ├── calendar_screen.dart # 日历页
+│   ├── add_*.dart           # 各种添加页面
+│   └── ...                  # 其他功能页面
+├── widgets/                  # 可复用组件
+│   ├── todo_item.dart       # 待办事项组件
+│   ├── mind_map_view.dart   # 思维导图组件
+│   └── countdown_timer.dart # 倒计时组件
+└── test/                     # 测试文件
+```
+
+## 🚀 安装和运行
+
+### 环境要求
+
+- Flutter SDK: ^3.11.3
+- Dart SDK: ^3.11.3
+- Android Studio / VS Code
+- iOS 模拟器 / Android 模拟器 / 真机
+
+### 安装步骤
+
+1. **克隆项目**
+   ```bash
+   git clone <项目地址>
+   cd flutter_application_1
+   ```
+
+2. **安装依赖**
+   ```bash
+   flutter pub get
+   ```
+
+3. **运行应用**
+   ```bash
+   flutter run
+   ```
+
+### 构建发布版本
+
+- **Android**
+  ```bash
+  flutter build apk
+  ```
+
+- **iOS**
+  ```bash
+  flutter build ios
+  ```
+
+## 📖 使用指南
+
+### 添加课程
+1. 点击底部导航栏的"待办"标签
+2. 点击右上角的日历图标进入课表页面
+3. 点击右上角的"+"按钮添加新课程
+4. 填写课程信息（名称、教室、教师、时间等）
+
+### 创建待办
+1. 在"待办"页面点击"+"按钮
+2. 输入待办标题和描述
+3. 支持添加子任务，形成思维导图结构
+
+### 记录账单
+1. 切换到"账单"标签
+2. 点击"+"按钮添加新账单
+3. 选择类型（收入/支出）、金额和分类
+4. 可通过日历视图查看历史记录
+
+### 设置预算
+1. 在"账单"页面点击设置图标
+2. 添加预算类别和金额
+3. 系统会自动跟踪消费并提醒
+
+## 📝 开发文档
+
+项目包含详细的开发文档：
+- `课表功能实现文档.md` - 课表功能的技术实现
+- `日历计划功能文档.md` - 日历计划功能的详细说明
+- `功能增加文档_待办页显示计划和课程.md` - 待办页面的功能增强
+
+## 🤝 贡献
+
+欢迎提交 Issue 和 Pull Request 来改进这个项目。
+
+## 📄 许可证
+
+本项目采用 MIT 许可证 - 详见 LICENSE 文件
+
+## 📞 联系方式
+
+如有问题或建议，请通过以下方式联系：
+- 提交 GitHub Issue
+- 发送邮件至：[待填写]
+
+---
+
+**大学生助手** - 让学习和生活更有序 🎓
