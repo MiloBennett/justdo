@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/bill.dart';
 
 class AddBillScreen extends StatefulWidget {
@@ -14,12 +15,47 @@ class AddBillScreen extends StatefulWidget {
 class _AddBillScreenState extends State<AddBillScreen> {
   final _titleController = TextEditingController();
   final _amountController = TextEditingController();
-  final _categoryController = TextEditingController();
   final _noteController = TextEditingController();
+  final _customSubCategoryController = TextEditingController();
 
   DateTime _selectedDate = DateTime.now();
   BillType _selectedType = BillType.deposit;
   Color _selectedColor = Colors.green;
+  String _selectedCategory = '工资';
+  String _selectedSubCategory = '';
+
+  final List<String> _depositCategories = ['工资', '副业', '其他'];
+
+  final List<String> _withdrawCategories = [
+    '生活费',
+    '购物',
+    '餐饮',
+    '交通',
+    '娱乐',
+    '医疗',
+    '教育',
+    '其他',
+  ];
+
+  final Map<String, List<String>> _subCategories = {
+    '工资': ['基本工资', '绩效奖金', '加班费', '补贴', '其他'],
+    '副业': ['兼职', '自由职业', '投资收益', '其他'],
+    '生活费': ['洗化用品', '生活用品', '水电燃气', '房租', '物业费', '其他'],
+    '购物': ['衣服鞋帽', '数码电子', '家居用品', '化妆品', '其他'],
+    '餐饮': ['早餐', '午餐', '晚餐', '夜宵', '聚餐', '外卖', '其他'],
+    '交通': ['公交地铁', '打车', '加油', '停车费', '维修保养', '其他'],
+    '娱乐': ['电影', '游戏', '旅游', '运动健身', 'KTV', '其他'],
+    '医疗': ['看病', '药品', '体检', '保健品', '其他'],
+    '教育': ['学费', '书本', '培训课程', '考试费用', '其他'],
+    '其他': ['其他'],
+  };
+
+  List<String> get _currentCategories => _selectedType == BillType.deposit
+      ? _depositCategories
+      : _withdrawCategories;
+
+  List<String> get _currentSubCategories =>
+      _subCategories[_selectedCategory] ?? ['其他'];
 
   @override
   void initState() {
@@ -27,14 +63,15 @@ class _AddBillScreenState extends State<AddBillScreen> {
     if (widget.initialDate != null) {
       _selectedDate = widget.initialDate!;
     }
+    _selectedSubCategory = _currentSubCategories.first;
   }
 
   @override
   void dispose() {
     _titleController.dispose();
     _amountController.dispose();
-    _categoryController.dispose();
     _noteController.dispose();
+    _customSubCategoryController.dispose();
     super.dispose();
   }
 
@@ -48,10 +85,6 @@ class _AddBillScreenState extends State<AddBillScreen> {
       return;
     }
 
-    final category = _categoryController.text.isNotEmpty
-        ? _categoryController.text
-        : '';
-
     final note = _noteController.text.isNotEmpty ? _noteController.text : '';
 
     final bill = Bill(
@@ -60,7 +93,7 @@ class _AddBillScreenState extends State<AddBillScreen> {
       amount: amount,
       date: _selectedDate,
       type: _selectedType,
-      category: category,
+      category: '$_selectedCategory - $_selectedSubCategory',
       note: note,
       color: _selectedColor,
     );
@@ -111,6 +144,8 @@ class _AddBillScreenState extends State<AddBillScreen> {
                       setState(() {
                         _selectedType = BillType.deposit;
                         _selectedColor = Colors.green;
+                        _selectedCategory = _depositCategories.first;
+                        _selectedSubCategory = _currentSubCategories.first;
                       });
                     },
                   ),
@@ -132,8 +167,27 @@ class _AddBillScreenState extends State<AddBillScreen> {
                       setState(() {
                         _selectedType = BillType.withdraw;
                         _selectedColor = Colors.orange;
+                        _selectedCategory = _withdrawCategories.first;
+                        _selectedSubCategory = _currentSubCategories.first;
                       });
                     },
+                  ),
+                ],
+              ),
+              CupertinoListSection.insetGrouped(
+                header: const Text('分类'),
+                children: [
+                  CupertinoListTile(
+                    title: const Text('分类'),
+                    additionalInfo: Text(_selectedCategory),
+                    trailing: const CupertinoListTileChevron(),
+                    onTap: () => _showCategoryPicker(),
+                  ),
+                  CupertinoListTile(
+                    title: const Text('子分类'),
+                    additionalInfo: Text(_selectedSubCategory),
+                    trailing: const CupertinoListTileChevron(),
+                    onTap: () => _showSubCategoryPicker(),
                   ),
                 ],
               ),
@@ -152,11 +206,11 @@ class _AddBillScreenState extends State<AddBillScreen> {
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
-                  ),
-                  CupertinoTextFormFieldRow(
-                    controller: _categoryController,
-                    placeholder: '分类',
-                    prefix: const Text('分类'),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d+\.?\d{0,2}'),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -224,6 +278,156 @@ class _AddBillScreenState extends State<AddBillScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showCategoryPicker() {
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) => Container(
+        height: 250,
+        color: CupertinoColors.systemBackground,
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('取消'),
+                  ),
+                  CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('确定'),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: CupertinoPicker(
+                itemExtent: 40,
+                onSelectedItemChanged: (index) {
+                  setState(() {
+                    _selectedCategory = _currentCategories[index];
+                    _selectedSubCategory = _currentSubCategories.first;
+                  });
+                },
+                children: _currentCategories
+                    .map((category) => Center(child: Text(category)))
+                    .toList(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSubCategoryPicker() {
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) => Container(
+        height: 350,
+        color: CupertinoColors.systemBackground,
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('取消'),
+                  ),
+                  CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('确定'),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: CupertinoPicker(
+                itemExtent: 40,
+                onSelectedItemChanged: (index) {
+                  setState(() {
+                    if (index == _currentSubCategories.length) {
+                      _showCustomSubCategoryDialog();
+                    } else {
+                      _selectedSubCategory = _currentSubCategories[index];
+                    }
+                  });
+                },
+                children: [
+                  ..._currentSubCategories.map(
+                    (subCategory) => Center(child: Text(subCategory)),
+                  ),
+                  const Center(
+                    child: Text(
+                      '+ 自定义',
+                      style: TextStyle(color: CupertinoColors.activeBlue),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showCustomSubCategoryDialog() {
+    _customSubCategoryController.clear();
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text('自定义子分类'),
+        content: Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: CupertinoTextField(
+            controller: _customSubCategoryController,
+            placeholder: '请输入子分类名称',
+            autofocus: true,
+          ),
+        ),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          CupertinoDialogAction(
+            onPressed: () {
+              final newSubCategory = _customSubCategoryController.text.trim();
+              if (newSubCategory.isNotEmpty) {
+                setState(() {
+                  _subCategories[_selectedCategory] ??= [];
+                  if (!_subCategories[_selectedCategory]!.contains('其他')) {
+                    _subCategories[_selectedCategory]!.add('其他');
+                  }
+                  final otherIndex = _subCategories[_selectedCategory]!.indexOf(
+                    '其他',
+                  );
+                  _subCategories[_selectedCategory]!.insert(
+                    otherIndex,
+                    newSubCategory,
+                  );
+                  _selectedSubCategory = newSubCategory;
+                });
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('确定'),
+          ),
+        ],
       ),
     );
   }

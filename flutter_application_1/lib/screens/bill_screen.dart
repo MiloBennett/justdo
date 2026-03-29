@@ -31,6 +31,25 @@ class BillScreen extends StatefulWidget {
 }
 
 class _BillScreenState extends State<BillScreen> {
+  final _goalController = TextEditingController();
+  double _savingsGoal = 0;
+  bool _hasGoal = false;
+  late PageController _pageController;
+  int _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(viewportFraction: 0.95);
+  }
+
+  @override
+  void dispose() {
+    _goalController.dispose();
+    _pageController.dispose();
+    super.dispose();
+  }
+
   void _addBill() async {
     final result = await Navigator.push<Bill>(
       context,
@@ -67,8 +86,9 @@ class _BillScreenState extends State<BillScreen> {
   }
 
   double _getTotalAmount(BillType type) {
+    final currentYear = DateTime.now().year;
     return widget.bills
-        .where((b) => b.type == type)
+        .where((b) => b.type == type && b.date.year == currentYear)
         .fold(0.0, (sum, b) => sum + b.amount);
   }
 
@@ -82,6 +102,59 @@ class _BillScreenState extends State<BillScreen> {
     final entries = grouped.entries.toList()
       ..sort((a, b) => b.key.compareTo(a.key));
     return entries;
+  }
+
+  void _showSetGoalDialog() {
+    _goalController.text = _hasGoal ? _savingsGoal.toStringAsFixed(0) : '';
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text('设置年度存款目标'),
+        content: Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: CupertinoTextField(
+            controller: _goalController,
+            placeholder: '请输入目标金额',
+            keyboardType: TextInputType.number,
+            prefix: const Padding(
+              padding: EdgeInsets.only(left: 8),
+              child: Text('¥'),
+            ),
+          ),
+        ),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          if (_hasGoal)
+            CupertinoDialogAction(
+              isDestructiveAction: true,
+              onPressed: () {
+                setState(() {
+                  _savingsGoal = 0;
+                  _hasGoal = false;
+                });
+                Navigator.pop(context);
+              },
+              child: const Text('清除目标'),
+            ),
+          CupertinoDialogAction(
+            onPressed: () {
+              final goal = double.tryParse(_goalController.text);
+              if (goal != null && goal > 0) {
+                setState(() {
+                  _savingsGoal = goal;
+                  _hasGoal = true;
+                });
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -136,15 +209,60 @@ class _BillScreenState extends State<BillScreen> {
         ),
       ),
       child: SafeArea(
-        child: widget.bills.isEmpty
+        child: widget.bills.isEmpty && !_hasGoal
             ? _buildEmptyState()
             : CustomScrollView(
                 slivers: [
-                  SliverToBoxAdapter(child: _buildSummaryCard()),
+                  SliverToBoxAdapter(child: _buildCarouselCards()),
                   _buildGroupedBillList(),
                 ],
               ),
       ),
+    );
+  }
+
+  Widget _buildCarouselCards() {
+    final cards = <Widget>[_buildSummaryCard(), _buildGoalCard()];
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 200,
+          child: PageView.builder(
+            controller: _pageController,
+            itemCount: null,
+            onPageChanged: (index) {
+              setState(() {
+                _currentPage = index % cards.length;
+              });
+            },
+            itemBuilder: (context, index) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: cards[index % cards.length],
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(cards.length, (index) {
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              width: _currentPage == index ? 20 : 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: _currentPage == index
+                    ? CupertinoColors.activeBlue
+                    : CupertinoColors.systemGrey4,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            );
+          }),
+        ),
+        const SizedBox(height: 8),
+      ],
     );
   }
 
@@ -154,7 +272,6 @@ class _BillScreenState extends State<BillScreen> {
     final balance = deposit - withdraw;
 
     return Container(
-      margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -178,7 +295,7 @@ class _BillScreenState extends State<BillScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                '总余额',
+                '年度收支',
                 style: TextStyle(
                   fontSize: 15,
                   color: CupertinoColors.white,
@@ -196,7 +313,7 @@ class _BillScreenState extends State<BillScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  DateFormat('yyyy年MM月').format(DateTime.now()),
+                  '${DateTime.now().year}年',
                   style: const TextStyle(
                     fontSize: 12,
                     color: CupertinoColors.white,
@@ -282,6 +399,176 @@ class _BillScreenState extends State<BillScreen> {
     );
   }
 
+  Widget _buildGoalCard() {
+    final deposit = _getTotalAmount(BillType.deposit);
+    final withdraw = _getTotalAmount(BillType.withdraw);
+    final currentSavings = deposit - withdraw;
+    final progress = _savingsGoal > 0 ? currentSavings / _savingsGoal : 0.0;
+    final remaining = _savingsGoal - currentSavings;
+
+    return GestureDetector(
+      onTap: _showSetGoalDialog,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: _hasGoal
+                ? (progress >= 1.0
+                      ? [const Color(0xFF34C759), const Color(0xFF30D158)]
+                      : [const Color(0xFFFF9500), const Color(0xFFFF6B00)])
+                : [const Color(0xFFFF9500), const Color(0xFFFF6B00)],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color:
+                  (_hasGoal && progress >= 1.0
+                          ? const Color(0xFF34C759)
+                          : const Color(0xFFFF9500))
+                      .withValues(alpha: 0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      _hasGoal && progress >= 1.0
+                          ? CupertinoIcons.checkmark_seal_fill
+                          : CupertinoIcons.scope,
+                      color: CupertinoColors.white,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      '年度存款目标',
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: CupertinoColors.white,
+                        fontWeight: FontWeight.w500,
+                        decoration: TextDecoration.none,
+                      ),
+                    ),
+                  ],
+                ),
+                if (_hasGoal)
+                  Text(
+                    '${(progress * 100).toStringAsFixed(1)}%',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: CupertinoColors.white,
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (_hasGoal) ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '¥${currentSavings.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      color: CupertinoColors.white,
+                      letterSpacing: -1,
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      '/ ¥${_savingsGoal.toStringAsFixed(0)}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: CupertinoColors.white.withValues(alpha: 0.7),
+                        decoration: TextDecoration.none,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: CupertinoColors.white.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: FractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: progress.clamp(0.0, 1.0),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: CupertinoColors.white,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                progress >= 1.0
+                    ? '恭喜！已达成存款目标'
+                    : remaining > 0
+                    ? '还需存入 ¥${remaining.toStringAsFixed(2)}'
+                    : '已超支 ¥${(-remaining).toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: CupertinoColors.white,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+            ] else ...[
+              const SizedBox(height: 20),
+              Center(
+                child: Column(
+                  children: [
+                    const Text(
+                      '点击设置年度存款目标',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                        color: CupertinoColors.white,
+                        decoration: TextDecoration.none,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '追踪你的年度存款进度',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: CupertinoColors.white.withValues(alpha: 0.8),
+                        decoration: TextDecoration.none,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -319,12 +606,45 @@ class _BillScreenState extends State<BillScreen> {
               decoration: TextDecoration.none,
             ),
           ),
+          const SizedBox(height: 24),
+          CupertinoButton(
+            onPressed: _showSetGoalDialog,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                color: CupertinoColors.systemBlue,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    CupertinoIcons.scope,
+                    color: CupertinoColors.white,
+                    size: 18,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    '设置年度存款目标',
+                    style: TextStyle(
+                      color: CupertinoColors.white,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildGroupedBillList() {
+    if (widget.bills.isEmpty) {
+      return const SliverToBoxAdapter(child: SizedBox());
+    }
+
     final sortedBills = List<Bill>.from(widget.bills)
       ..sort((a, b) => b.date.compareTo(a.date));
     final groupedEntries = _groupByDate(sortedBills);

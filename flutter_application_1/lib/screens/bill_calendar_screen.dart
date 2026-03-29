@@ -252,7 +252,7 @@ class _BillCalendarScreenState extends State<BillCalendarScreen> {
                   ),
                   if (bills.isNotEmpty)
                     Text(
-                      '${totalAmount >= 0 ? '+' : ''}¥${totalAmount.toStringAsFixed(0)}',
+                      '${totalAmount >= 0 ? '+' : ''}¥${totalAmount.toStringAsFixed(2)}',
                       style: TextStyle(
                         fontSize: 9,
                         color: isSelected

@@ -1,4 +1,4 @@
-# 大学生助手 - Flutter 移动应用
+# justdo - Flutter 移动应用
 
 一个专为大学生设计的全能型移动应用，帮助管理学习、生活和财务。
 
@@ -142,7 +142,7 @@ lib/
 
 如有问题或建议，请通过以下方式联系：
 - 提交 GitHub Issue
-- 发送邮件至：[待填写]
+- 发送邮件至：[to_win_the_world@outlook.com]
 
 ---
 
