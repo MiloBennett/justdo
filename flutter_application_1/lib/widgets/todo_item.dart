@@ -9,6 +9,8 @@ class TodoItem extends StatefulWidget {
   final VoidCallback onDelete;
   final VoidCallback? onSettings;
   final VoidCallback? onTap;
+  final VoidCallback? onToggleReluctant;
+  final VoidCallback? onShowPromise;
 
   const TodoItem({
     super.key,
@@ -17,6 +19,8 @@ class TodoItem extends StatefulWidget {
     required this.onDelete,
     this.onSettings,
     this.onTap,
+    this.onToggleReluctant,
+    this.onShowPromise,
   });
 
   @override
@@ -197,6 +201,25 @@ class _TodoItemState extends State<TodoItem> {
                         _buildSubtaskBadge(),
                       ],
                       const SizedBox(width: 4),
+                      // 反效率按钮（仅在非反效率任务时显示）
+                      if (!widget.todo.isReluctant) ...[
+                        GestureDetector(
+                          onTap: widget.onToggleReluctant,
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: CupertinoColors.systemGrey6,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Icon(
+                              CupertinoIcons.flame,
+                              size: 16,
+                              color: CupertinoColors.systemGrey3,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                      ],
                       // iOS风格箭头
                       const Icon(
                         CupertinoIcons.chevron_right,

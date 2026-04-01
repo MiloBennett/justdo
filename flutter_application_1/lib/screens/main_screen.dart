@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'home_screen.dart';
-import 'bill_screen.dart';
 import 'profile_screen.dart';
+import 'calendar_screen.dart';
 import 'settings_screen.dart';
 import '../models/schedule_settings.dart';
 import '../models/course.dart';
 import '../models/event.dart';
-import '../models/bill.dart';
-import '../models/budget.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -17,48 +15,49 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenState extends State<MainScreen>
+    with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
   ScheduleSettings _settings = ScheduleSettings();
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
 
   // 共享数据
   final List<Course> _courses = [];
   final List<Event> _events = [];
-  final List<Bill> _bills = [];
-  final List<Budget> _budgets = [
-    Budget(
-      id: '1',
-      category: '餐饮',
-      amount: 2000,
-      type: BudgetType.monthly,
-      startDate: DateTime.now(),
-      color: const Color(0xFFFF9500),
-    ),
-    Budget(
-      id: '2',
-      category: '交通',
-      amount: 500,
-      type: BudgetType.monthly,
-      startDate: DateTime.now(),
-      color: const Color(0xFF007AFF),
-    ),
-    Budget(
-      id: '3',
-      category: '购物',
-      amount: 1500,
-      type: BudgetType.monthly,
-      startDate: DateTime.now(),
-      color: const Color(0xFFFF2D55),
-    ),
-    Budget(
-      id: '4',
-      category: '娱乐',
-      amount: 800,
-      type: BudgetType.monthly,
-      startDate: DateTime.now(),
-      color: const Color(0xFF5856D6),
-    ),
+
+  final List<IconData> _icons = [
+    CupertinoIcons.check_mark_circled,
+    CupertinoIcons.calendar,
+    CupertinoIcons.person,
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.9).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  void _onTabTapped(int index) {
+    _animationController.forward().then((_) {
+      _animationController.reverse();
+    });
+    setState(() {
+      _currentIndex = index;
+    });
+  }
 
   void _openSettings() async {
     final result = await Navigator.push<ScheduleSettings>(
@@ -116,114 +115,114 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
-  void _addBill(Bill bill) {
-    setState(() {
-      _bills.add(bill);
-    });
-  }
-
-  void _removeBill(Bill bill) {
-    setState(() {
-      _bills.remove(bill);
-    });
-  }
-
-  void _toggleBillComplete(Bill bill) {
-    setState(() {
-      bill.isCompleted = !bill.isCompleted;
-    });
-  }
-
-  void _addBudget(Budget budget) {
-    setState(() {
-      _budgets.add(budget);
-    });
-  }
-
-  void _removeBudget(Budget budget) {
-    setState(() {
-      _budgets.remove(budget);
-    });
+  Widget _buildTabItem(int index) {
+    final isSelected = _currentIndex == index;
+    return GestureDetector(
+      onTap: () => _onTabTapped(index),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: isSelected
+              ? CupertinoColors.activeBlue
+              : CupertinoColors.systemGrey4,
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: CupertinoColors.activeBlue.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: AnimatedScale(
+          scale: isSelected ? 1.1 : 1.0,
+          duration: const Duration(milliseconds: 200),
+          child: Icon(_icons[index], color: CupertinoColors.white, size: 22),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoTabScaffold(
-      tabBar: CupertinoTabBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(CupertinoIcons.check_mark_circled),
-            activeIcon: Icon(CupertinoIcons.check_mark_circled_solid),
-            label: '待办',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(CupertinoIcons.money_dollar_circle),
-            activeIcon: Icon(CupertinoIcons.money_dollar_circle_fill),
-            label: '账单',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(CupertinoIcons.person),
-            activeIcon: Icon(CupertinoIcons.person_solid),
-            label: '我的',
+    return CupertinoPageScaffold(
+      child: Stack(
+        children: [
+          // 内容区域
+          Positioned.fill(bottom: 80, child: _buildContent()),
+          // 底部导航栏
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              height: 80,
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).padding.bottom,
+              ),
+              decoration: const BoxDecoration(
+                color: CupertinoColors.systemBackground,
+                border: Border(
+                  top: BorderSide(color: CupertinoColors.separator, width: 0.5),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _buildTabItem(0),
+                  _buildTabItem(1),
+                  _buildTabItem(2),
+                ],
+              ),
+            ),
           ),
         ],
       ),
-      tabBuilder: (context, index) {
-        switch (index) {
-          case 0:
-            return CupertinoTabView(
-              builder: (context) => HomeScreen(
-                courses: _courses,
-                events: _events,
-                currentWeek: 1,
-                onEventComplete: _toggleEventComplete,
-                settings: _settings,
-                onSettingsPressed: _openSettings,
-                onAddCourse: _addCourse,
-                onRemoveCourse: _removeCourse,
-                onAddEvent: _addEvent,
-                onRemoveEvent: _removeEvent,
-              ),
-            );
-          case 1:
-            return CupertinoTabView(
-              builder: (context) => BillScreen(
-                bills: _bills,
-                budgets: _budgets,
-                onAddBill: _addBill,
-                onRemoveBill: _removeBill,
-                onToggleComplete: _toggleBillComplete,
-                onAddBudget: _addBudget,
-                onRemoveBudget: _removeBudget,
-              ),
-            );
-          case 2:
-            return CupertinoTabView(
-              builder: (context) => const ProfileScreen(),
-            );
-          default:
-            return CupertinoTabView(
-              builder: (context) => HomeScreen(
-                courses: _courses,
-                events: _events,
-                currentWeek: 1,
-                onEventComplete: _toggleEventComplete,
-                settings: _settings,
-                onSettingsPressed: _openSettings,
-                onAddCourse: _addCourse,
-                onRemoveCourse: _removeCourse,
-                onAddEvent: _addEvent,
-                onRemoveEvent: _removeEvent,
-              ),
-            );
-        }
-      },
     );
+  }
+
+  Widget _buildContent() {
+    switch (_currentIndex) {
+      case 0:
+        return HomeScreen(
+          courses: _courses,
+          events: _events,
+          currentWeek: 1,
+          onEventComplete: _toggleEventComplete,
+          settings: _settings,
+          onSettingsPressed: _openSettings,
+          onAddCourse: _addCourse,
+          onRemoveCourse: _removeCourse,
+          onAddEvent: _addEvent,
+          onRemoveEvent: _removeEvent,
+        );
+      case 1:
+        return CalendarScreen(
+          events: _events,
+          onAddEvent: _addEvent,
+          onRemoveEvent: _removeEvent,
+          onToggleComplete: _toggleEventComplete,
+        );
+      case 2:
+        return const ProfileScreen();
+      default:
+        return HomeScreen(
+          courses: _courses,
+          events: _events,
+          currentWeek: 1,
+          onEventComplete: _toggleEventComplete,
+          settings: _settings,
+          onSettingsPressed: _openSettings,
+          onAddCourse: _addCourse,
+          onRemoveCourse: _removeCourse,
+          onAddEvent: _addEvent,
+          onRemoveEvent: _removeEvent,
+        );
+    }
   }
 }

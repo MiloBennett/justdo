@@ -5,11 +5,14 @@ import '../models/course.dart';
 import '../models/event.dart';
 import '../models/schedule_settings.dart';
 import '../widgets/todo_item.dart';
+import '../widgets/promise_dialog.dart';
+import '../widgets/todo_drawer.dart';
 import 'add_todo_screen.dart';
 import 'todo_mind_map_screen.dart';
 import 'focus_settings_screen.dart';
 import 'schedule_screen.dart';
 import 'calendar_screen.dart';
+import 'reluctant_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final List<Course> courses;
@@ -122,12 +125,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // 获取未完成的待办任务
   List<Todo> _getPendingTodos() {
-    return _todos.where((todo) => !todo.isCompleted).toList();
+    return _todos
+        .where((todo) => !todo.isCompleted && !todo.isReluctant)
+        .toList();
   }
 
   // 获取已完成的待办任务
   List<Todo> _getCompletedTodos() {
     return _todos.where((todo) => todo.isCompleted).toList();
+  }
+
+  // 获取"不想做"任务
+  List<Todo> _getReluctantTodos() {
+    return _todos
+        .where((todo) => todo.isReluctant && !todo.isCompleted)
+        .toList();
   }
 
   // 获取今天的课程
@@ -148,6 +160,97 @@ class _HomeScreenState extends State<HomeScreen> {
       final bMinutes = b.startTime.hour * 60 + b.startTime.minute;
       return aMinutes.compareTo(bMinutes);
     });
+  }
+
+  List<Todo> _getAvailableTodos(Todo exclude) {
+    return _todos.where((todo) {
+      return !todo.isCompleted && todo.id != exclude.id;
+    }).toList();
+  }
+
+  void _handleToggleReluctant(Todo todo) {
+    if (todo.isReluctant) {
+      todo.toggleReluctant();
+      todo.promiseTargetId = null;
+      todo.promiseTargetTitle = null;
+      setState(() {});
+    } else {
+      final availableTodos = _getAvailableTodos(todo);
+      showPromiseDialog(
+        context: context,
+        currentTodo: todo,
+        availableTodos: availableTodos,
+        onConfirm: (title, selectedTodo) {
+          todo.isReluctant = true;
+          if (selectedTodo != null) {
+            todo.promiseTargetId = selectedTodo.id;
+            todo.promiseTargetTitle = title;
+          } else {
+            final newTodo = Todo(
+              id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
+              title: title,
+              startTime: todo.startTime,
+              endTime: todo.endTime,
+            );
+            _todos.add(newTodo);
+            todo.promiseTargetId = newTodo.id;
+            todo.promiseTargetTitle = title;
+            todo.startTime = null;
+            todo.endTime = null;
+          }
+          setState(() {});
+        },
+      );
+    }
+  }
+
+  void _handleShowPromise(Todo todo) {
+    if (todo.promiseTargetTitle != null) {
+      showCupertinoDialog(
+        context: context,
+        builder: (context) => CupertinoAlertDialog(
+          title: const Column(
+            children: [
+              Icon(
+                CupertinoIcons.hand_raised_fill,
+                color: CupertinoColors.systemGreen,
+                size: 32,
+              ),
+              SizedBox(height: 8),
+              Text('你的承诺'),
+            ],
+          ),
+          content: Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: Text(
+              '做完 "${todo.promiseTargetTitle}"，必须回头啃 "${todo.title}"',
+              style: const TextStyle(fontSize: 15),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('查看想做的事'),
+              onPressed: () {
+                Navigator.pop(context);
+                final targetTodo = _todos.firstWhere(
+                  (t) => t.id == todo.promiseTargetId,
+                  orElse: () => todo,
+                );
+                if (targetTodo.id != todo.id) {
+                  _navigateToMindMap(targetTodo);
+                }
+              },
+            ),
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              child: const Text('知道了'),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   // 获取最近7天的日历计划
@@ -177,6 +280,36 @@ class _HomeScreenState extends State<HomeScreen> {
       });
   }
 
+  void _showDrawer() {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '关闭侧边栏',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return Align(
+          alignment: Alignment.centerLeft,
+          child: TodoDrawer(
+            todos: _todos,
+            onCategoryTap: (category) {
+              Navigator.of(context).pop();
+            },
+          ),
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(-1, 0),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut)),
+          child: child,
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final todayCourses = _getTodayCourses();
@@ -187,7 +320,35 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
-        middle: const Text('待办事项'),
+        leading: GestureDetector(
+          onTap: () {
+            _showDrawer();
+          },
+          child: const Icon(CupertinoIcons.line_horizontal_3, size: 22),
+        ),
+        middle: GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              CupertinoPageRoute(
+                builder: (context) => CalendarScreen(
+                  events: widget.events,
+                  onAddEvent: widget.onAddEvent,
+                  onRemoveEvent: widget.onRemoveEvent,
+                  onToggleComplete: widget.onEventComplete,
+                ),
+              ),
+            );
+          },
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('待办事项'),
+              SizedBox(width: 4),
+              Icon(CupertinoIcons.calendar, size: 18),
+            ],
+          ),
+        ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -196,18 +357,76 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.push(
                   context,
                   CupertinoPageRoute(
-                    builder: (context) => CalendarScreen(
-                      events: widget.events,
-                      onAddEvent: widget.onAddEvent,
-                      onRemoveEvent: widget.onRemoveEvent,
-                      onToggleComplete: widget.onEventComplete,
+                    builder: (context) => ReluctantScreen(
+                      todos: _todos,
+                      onToggleComplete: (todo) {
+                        setState(() {
+                          todo.toggleComplete();
+                        });
+                      },
+                      onRemoveTodo: (todo) {
+                        setState(() {
+                          _todos.remove(todo);
+                        });
+                      },
+                      onToggleReluctant: (todo) {
+                        if (todo.promiseTargetTitle != null) {
+                          showCupertinoDialog(
+                            context: context,
+                            builder: (context) => CupertinoAlertDialog(
+                              title: const Text('取消承诺'),
+                              content: Text(
+                                '确定要取消 "${todo.title}" 的"不想做"标记吗？\n\n你将失去做 "${todo.promiseTargetTitle}" 的机会',
+                              ),
+                              actions: [
+                                CupertinoDialogAction(
+                                  child: const Text('取消'),
+                                  onPressed: () => Navigator.pop(context),
+                                ),
+                                CupertinoDialogAction(
+                                  isDestructiveAction: true,
+                                  child: const Text('确定取消'),
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    todo.isReluctant = false;
+                                    todo.promiseTargetId = null;
+                                    todo.promiseTargetTitle = null;
+                                    setState(() {});
+                                  },
+                                ),
+                              ],
+                            ),
+                          );
+                        } else {
+                          todo.toggleReluctant();
+                          setState(() {});
+                        }
+                      },
                     ),
                   ),
                 );
               },
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Icon(CupertinoIcons.calendar, size: 22),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Stack(
+                  children: [
+                    const Icon(CupertinoIcons.flame, size: 22),
+                    // 如果有"不想做但得做"的任务，显示小红点
+                    if (_todos.any((t) => t.isReluctant && !t.isCompleted))
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: CupertinoColors.systemOrange,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
             GestureDetector(
@@ -244,6 +463,42 @@ class _HomeScreenState extends State<HomeScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            // 不想做但得做
+            if (_getReluctantTodos().isNotEmpty) ...[
+              _buildSectionHeader(
+                '不想做但得做',
+                CupertinoIcons.flame,
+                Colors.orange,
+              ),
+              const SizedBox(height: 8),
+              ..._getReluctantTodos().map(
+                (todo) => TodoItem(
+                  todo: todo,
+                  onToggle: () {
+                    setState(() {
+                      todo.toggleComplete();
+                    });
+                  },
+                  onDelete: () {
+                    setState(() {
+                      _todos.remove(todo);
+                    });
+                  },
+                  onSettings: () {
+                    Navigator.of(context, rootNavigator: true).push(
+                      CupertinoPageRoute(
+                        builder: (context) => FocusSettingsScreen(todo: todo),
+                      ),
+                    );
+                  },
+                  onTap: () => _navigateToMindMap(todo),
+                  onToggleReluctant: () => _handleToggleReluctant(todo),
+                  onShowPromise: () => _handleShowPromise(todo),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
             // 逾期待办
             if (overdueTodos.isNotEmpty) ...[
               _buildSectionHeader(
@@ -273,6 +528,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   },
                   onTap: () => _navigateToMindMap(todo),
+                  onToggleReluctant: () => _handleToggleReluctant(todo),
+                  onShowPromise: () => _handleShowPromise(todo),
                 ),
               ),
               const SizedBox(height: 16),
@@ -303,6 +560,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   },
                   onTap: () => _navigateToMindMap(todo),
+                  onToggleReluctant: () => _handleToggleReluctant(todo),
+                  onShowPromise: () => _handleShowPromise(todo),
                 ),
               ),
               const SizedBox(height: 16),
@@ -375,6 +634,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   },
                   onTap: () => _navigateToMindMap(todo),
+                  onToggleReluctant: () => _handleToggleReluctant(todo),
+                  onShowPromise: () => _handleShowPromise(todo),
                 );
               }),
             const SizedBox(height: 16),
@@ -405,6 +666,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     },
                     onTap: () => _navigateToMindMap(todo),
+                    onToggleReluctant: () => _handleToggleReluctant(todo),
+                    onShowPromise: () => _handleShowPromise(todo),
                   );
                 }),
               const SizedBox(height: 16),

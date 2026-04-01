@@ -10,6 +10,10 @@ class Todo {
   int? priority; // 优先级（1-5，5最高）
   List<Todo> subtasks;
   bool isExpanded;
+  bool isReluctant; // 标记为"不想做但得做"的任务
+  String? promiseTargetId; // 承诺完成后要回去做的任务ID
+  String? promiseTargetTitle; // 承诺的任务标题
+  String? category; // 任务分类（生活、学习、购物、游玩）
 
   Todo({
     required this.id,
@@ -23,11 +27,19 @@ class Todo {
     this.priority,
     List<Todo>? subtasks,
     this.isExpanded = false,
+    this.isReluctant = false,
+    this.promiseTargetId,
+    this.promiseTargetTitle,
+    this.category,
   }) : createdAt = createdAt ?? DateTime.now(),
        subtasks = subtasks ?? [];
 
   void toggleComplete() {
     isCompleted = !isCompleted;
+  }
+
+  void toggleReluctant() {
+    isReluctant = !isReluctant;
   }
 
   void toggleExpanded() {
