@@ -3,10 +3,12 @@ import 'package:flutter/cupertino.dart';
 import 'home_screen.dart';
 import 'profile_screen.dart';
 import 'calendar_screen.dart';
+import 'statistics_screen.dart';
 import 'settings_screen.dart';
 import '../models/schedule_settings.dart';
 import '../models/course.dart';
 import '../models/event.dart';
+import '../models/todo.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -18,44 +20,25 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen>
     with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
+  int? _pressedIndex;
   ScheduleSettings _settings = ScheduleSettings();
-  late AnimationController _animationController;
-  late Animation<double> _scaleAnimation;
 
   // 共享数据
   final List<Course> _courses = [];
   final List<Event> _events = [];
+  final List<Todo> _todos = [];
 
   final List<IconData> _icons = [
     CupertinoIcons.check_mark_circled,
     CupertinoIcons.calendar,
+    CupertinoIcons.chart_pie,
     CupertinoIcons.person,
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 200),
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.9).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
-
   void _onTabTapped(int index) {
-    _animationController.forward().then((_) {
-      _animationController.reverse();
-    });
     setState(() {
       _currentIndex = index;
+      _pressedIndex = null;
     });
   }
 
@@ -117,31 +100,50 @@ class _MainScreenState extends State<MainScreen>
 
   Widget _buildTabItem(int index) {
     final isSelected = _currentIndex == index;
+    final isPressed = _pressedIndex == index;
     return GestureDetector(
-      onTap: () => _onTabTapped(index),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: isSelected
-              ? CupertinoColors.activeBlue
-              : CupertinoColors.systemGrey4,
-          borderRadius: BorderRadius.circular(22),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: CupertinoColors.activeBlue.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: AnimatedScale(
-          scale: isSelected ? 1.1 : 1.0,
-          duration: const Duration(milliseconds: 200),
-          child: Icon(_icons[index], color: CupertinoColors.white, size: 22),
+      onTapDown: (_) {
+        setState(() {
+          _pressedIndex = index;
+        });
+      },
+      onTapUp: (_) {
+        _onTabTapped(index);
+      },
+      onTapCancel: () {
+        setState(() {
+          _pressedIndex = null;
+        });
+      },
+      child: AnimatedScale(
+        scale: isPressed ? 0.9 : 1.0,
+        duration: const Duration(milliseconds: 150),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          width: 70,
+          height: 36,
+          decoration: BoxDecoration(
+            color: isSelected
+                ? CupertinoColors.activeBlue
+                : CupertinoColors.systemGrey5,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: isSelected
+                ? [
+                    const BoxShadow(
+                      color: Color(0x4D007AFF),
+                      blurRadius: 8,
+                      offset: Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Icon(
+            _icons[index],
+            color: isSelected
+                ? CupertinoColors.white
+                : CupertinoColors.systemGrey,
+            size: 20,
+          ),
         ),
       ),
     );
@@ -177,6 +179,7 @@ class _MainScreenState extends State<MainScreen>
                   _buildTabItem(0),
                   _buildTabItem(1),
                   _buildTabItem(2),
+                  _buildTabItem(3),
                 ],
               ),
             ),
@@ -209,6 +212,8 @@ class _MainScreenState extends State<MainScreen>
           onToggleComplete: _toggleEventComplete,
         );
       case 2:
+        return StatisticsScreen(todos: _todos);
+      case 3:
         return const ProfileScreen();
       default:
         return HomeScreen(

@@ -36,11 +36,12 @@ class _FocusSettingsScreenState extends State<FocusSettingsScreen> {
       return a.startTime!.compareTo(b.startTime!);
     });
 
-    // 获取第一个子任务的时长作为专注时长
-    int focusDuration = 25;
-    int breakDuration = 0;
+    // 专注时长和休息时长
+    int focusDuration;
+    int breakDuration = 5; // 默认5分钟休息
 
     if (pendingSubtasks.isNotEmpty) {
+      // 有子任务：使用第一个子任务的时长
       focusDuration = pendingSubtasks.first.duration ?? 25;
 
       // 计算子任务之间的时间差作为休息时间
@@ -53,9 +54,12 @@ class _FocusSettingsScreenState extends State<FocusSettingsScreen> {
             Duration(minutes: first.duration ?? 0),
           );
           final diff = second.startTime!.difference(firstEnd).inMinutes;
-          breakDuration = diff > 0 ? diff : 0;
+          breakDuration = diff > 0 ? diff : 5;
         }
       }
+    } else {
+      // 没有子任务：使用任务本身的时长
+      focusDuration = widget.todo.duration ?? 25;
     }
 
     _focusDurationController = TextEditingController(

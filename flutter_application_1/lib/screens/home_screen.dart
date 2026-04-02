@@ -11,7 +11,6 @@ import 'add_todo_screen.dart';
 import 'todo_mind_map_screen.dart';
 import 'focus_settings_screen.dart';
 import 'schedule_screen.dart';
-import 'calendar_screen.dart';
 import 'reluctant_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -326,29 +325,7 @@ class _HomeScreenState extends State<HomeScreen> {
           },
           child: const Icon(CupertinoIcons.line_horizontal_3, size: 22),
         ),
-        middle: GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              CupertinoPageRoute(
-                builder: (context) => CalendarScreen(
-                  events: widget.events,
-                  onAddEvent: widget.onAddEvent,
-                  onRemoveEvent: widget.onRemoveEvent,
-                  onToggleComplete: widget.onEventComplete,
-                ),
-              ),
-            );
-          },
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('待办事项'),
-              SizedBox(width: 4),
-              Icon(CupertinoIcons.calendar, size: 18),
-            ],
-          ),
-        ),
+        middle: const Text('待办事项'),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [

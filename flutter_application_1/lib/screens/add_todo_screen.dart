@@ -182,12 +182,21 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
 
   void _submit() {
     final inputTitle = _titleController.text.trim();
+
+    // 根据开始时间和结束时间计算时长
+    int? duration;
+    if (_startTime != null && _endTime != null) {
+      duration = _endTime!.difference(_startTime!).inMinutes;
+      if (duration <= 0) duration = 1;
+    }
+
     final todo = Todo(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       title: inputTitle.isEmpty ? _selectedCategory : inputTitle,
       description: _descriptionController.text.trim(),
       startTime: _startTime,
       endTime: _endTime,
+      duration: duration,
       category: inputTitle.isEmpty ? null : _selectedCategory,
     );
     Navigator.pop(context, todo);

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import '../models/todo.dart';
+import '../models/focus_record.dart';
 
 class FocusTimerScreen extends StatefulWidget {
   final Todo todo;
@@ -120,6 +121,7 @@ class _FocusTimerScreenState extends State<FocusTimerScreen> {
       }
     } else {
       _completedSessions++;
+      _saveFocusRecord();
       setState(() {
         _isBreak = true;
         _remainingSeconds =
@@ -134,6 +136,18 @@ class _FocusTimerScreenState extends State<FocusTimerScreen> {
         _showCompletionDialog('专注完成', '开始休息');
       }
     }
+  }
+
+  void _saveFocusRecord() {
+    final record = FocusRecord(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      todoId: widget.todo.id,
+      todoTitle: widget.todo.title,
+      category: widget.todo.category,
+      duration: widget.focusDuration,
+      completedAt: DateTime.now(),
+    );
+    FocusRecordManager.addRecord(record);
   }
 
   void _showCompletionDialog(String title, String content) {
@@ -420,6 +434,23 @@ class _FocusTimerScreenState extends State<FocusTimerScreen> {
                     CupertinoButton(
                       onPressed: () {
                         _timer?.cancel();
+                        if (!_isBreak &&
+                            _remainingSeconds < widget.focusDuration * 60) {
+                          final elapsedMinutes =
+                              ((widget.focusDuration * 60 - _remainingSeconds) /
+                                      60)
+                                  .ceil();
+                          final record = FocusRecord(
+                            id: DateTime.now().millisecondsSinceEpoch
+                                .toString(),
+                            todoId: widget.todo.id,
+                            todoTitle: widget.todo.title,
+                            category: widget.todo.category,
+                            duration: elapsedMinutes,
+                            completedAt: DateTime.now(),
+                          );
+                          FocusRecordManager.addRecord(record);
+                        }
                         Navigator.pop(context);
                       },
                       child: const Icon(
